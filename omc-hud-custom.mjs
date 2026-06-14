@@ -1,0 +1,159 @@
+#!/usr/bin/env node
+/**
+ * OMC HUD custom formatter (wrapper).
+ *
+ * Runs the canonical OMC HUD (omc-hud.mjs), then reformats its rendered line
+ * into a compact pipe-delimited layout requested by the user:
+ *
+ *   OMC#X.Y.Z|Op4.8(max)|5h:6%/3h56m|wk:..|sn:..|think|ctx:21%|se:4.7hr|🔧N|<cwd>
+ *
+ * Why a wrapper: OMC's render.js hardcodes " | " separators, the "[...]" label
+ * brackets, the "Model: " prefix, the "percent(time)" rate layout and the
+ * "session:Nm" label. None are configurable, so we transform the final text.
+ * All data (usage %, reset times, tool counts, cwd) still comes from OMC.
+ *
+ * Defensive: on any parse failure it prints OMC's raw output unchanged, so the
+ * statusline never breaks if OMC's format changes after an update.
+ */
+import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const HUD = join(__dirname, "omc-hud.mjs");
+const PLAN_TIER = "max"; // Claude Max x20 subscription
+
+// Currently logged-in Claude account: the part of the email before "@".
+// Read from ~/.claude.json (oauthAccount.emailAddress) via a light regex so we
+// don't JSON.parse the whole config every render.
+function loginAccount() {
+  try {
+    const raw = readFileSync(join(homedir(), ".claude.json"), "utf8");
+    const m = raw.match(/"emailAddress"\s*:\s*"([^"@]+)@/);
+    return m ? m[1] : "";
+  } catch {
+    return "";
+  }
+}
+
+// Read the statusline JSON Claude Code pipes on stdin (empty when run manually).
+let input = "";
+try {
+  input = readFileSync(0, "utf8");
+} catch {
+  /* no stdin */
+}
+
+const res = spawnSync(process.execPath, [HUD], { input, encoding: "utf8" });
+const raw = (res.stdout || "").replace(/\r/g, "");
+if (!raw.trim()) {
+  // HUD produced nothing usable; surface stderr for debugging and exit.
+  process.stdout.write((res.stderr || "").trim() + "\n");
+  process.exit(0);
+}
+
+const stripAnsi = (s) => s.replace(/\x1b\[[0-9;]*m/g, "");
+
+// Color helpers — we strip OMC's ANSI to parse, then re-apply our own so the
+// statusline is highlighted. Threshold scale (usage/context %): green<70,
+// yellow<85, red>=85. Pipes and path are dimmed; model name cyan, tier yellow.
+const A = (c, s) => `\x1b[${c}m${s}\x1b[0m`;
+const SEP = "\x1b[2m|\x1b[0m";
+const pc = (n) => (n >= 85 ? "31" : n >= 70 ? "33" : "32");
+const colorRate = (seg) => {
+  const m = seg.match(/^(\w+):(\d+)%\/(.+)$/);
+  return m ? `${m[1]}:${A(pc(+m[2]), m[2] + "%")}\x1b[2m/\x1b[0m${A("36", m[3])}` : seg;
+};
+const colorCtx = (seg) => {
+  const m = seg.match(/^ctx:(\d+)%$/);
+  return m ? `ctx:${A(pc(+m[1]), m[1] + "%")}` : seg;
+};
+const colorModel = (seg) => {
+  const m = seg.match(/^(.+?)\/(\w+)$/);
+  return m ? `${A("36", m[1])}\x1b[2m/\x1b[0m${A("33", m[2])}` : A("36", seg);
+};
+const colorSe = (seg) => {
+  const m = seg.match(/^se:(.+)$/);
+  return m ? `se:${A("33", m[1])}` : seg;
+};
+
+try {
+  const lines = raw.split("\n").map(stripAnsi).filter((l) => l.length);
+  const mainIdx = lines.findIndex((l) => l.includes("OMC#"));
+  if (mainIdx === -1) throw new Error("no OMC line");
+
+  const main = lines[mainIdx];
+  const pathLine = lines.slice(0, mainIdx).join(" ").trim(); // cwd (+git) group above
+  const below = lines.slice(mainIdx + 1); // multiline agent tree, kept as-is
+
+  // Collapse " | " -> "|", then split into segments.
+  const rawSegs = main
+    .replace(/\s*\|\s*/g, "|")
+    .split("|")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  // The 5h/wk/sn rate windows live in one space-separated segment; expand them.
+  const segs = [];
+  for (const s of rawSegs) {
+    if (/\b(5h|wk|sn):/.test(s) && /\s/.test(s)) {
+      for (const p of s.split(/\s+/)) if (p) segs.push(p);
+    } else {
+      segs.push(s);
+    }
+  }
+
+  const f = { label: "", model: "", r5: "", rwk: "", rsn: "", think: "", ctx: "", se: "", counts: "" };
+  const extra = [];
+  const slash = (s) => s.replace(/%\(([^)]+)\)/, "%/$1"); // 6%(3h56m) -> 6%/3h56m
+
+  for (const s of segs) {
+    if (/^\[?OMC#/.test(s)) {
+      const m = s.match(/OMC#([0-9][0-9.]*)/);
+      f.label = m ? `OMC#${m[1]}` : s; // drop brackets + trailing "L"
+    } else if (/^Model:/.test(s) || /^(Opus|Sonnet|Haiku)\b/.test(s)) {
+      const m = s.match(/(?:Model:\s*)?([A-Za-z]+)\s*([0-9][0-9.]*)/);
+      f.model = m ? `${m[1].slice(0, 2)}${m[2]}/${PLAN_TIER}` : s; // Opus 4.8 -> Op4.8/max
+    } else if (/^5h:/.test(s)) {
+      f.r5 = slash(s);
+    } else if (/^wk:/.test(s)) {
+      f.rwk = slash(s);
+    } else if (/^sn:/.test(s)) {
+      f.rsn = slash(s);
+    } else if (/^think/i.test(s)) {
+      f.think = "think";
+    } else if (/^ctx:/.test(s)) {
+      f.ctx = s;
+    } else if (/^session:/.test(s)) {
+      const m = s.match(/session:(\d+)m/);
+      f.se = m ? `se:${(parseInt(m[1], 10) / 60).toFixed(1)}hr` : s.replace(/^session:/, "se:");
+    } else if (/🔧|🤖|⚡/.test(s) || /^[TAS]:\d/.test(s)) {
+      f.counts = s;
+    } else {
+      extra.push(s); // dynamic badges: todos, ralph, autopilot, bg, skill, etc.
+    }
+  }
+
+  const colored = [];
+  if (f.model) colored.push(colorModel(f.model));
+  if (f.r5) colored.push(colorRate(f.r5));
+  if (f.rwk) colored.push(colorRate(f.rwk));
+  if (f.rsn) colored.push(colorRate(f.rsn));
+  if (f.think) colored.push(A("36", f.think));
+  if (f.ctx) colored.push(colorCtx(f.ctx));
+  if (f.se) colored.push(colorSe(f.se));
+  if (f.counts) colored.push(f.counts.trim().replace(/\s+/g, SEP));
+  for (const e of extra) colored.push(A("2", e));
+  if (pathLine) colored.push(A("36", pathLine));
+  const acct = loginAccount();
+  if (acct) colored.push(A("92", acct));
+  if (f.label) colored.push(A("1", f.label)); // OMC label moved to the very end
+
+  let result = colored.join(SEP);
+  if (below.length) result += "\n" + below.join("\n");
+  process.stdout.write(result + "\n");
+} catch {
+  process.stdout.write(raw.endsWith("\n") ? raw : raw + "\n"); // safe passthrough
+}
