@@ -20,13 +20,20 @@ Op4.8/high|5h:2%/3h58m|wk:23%/3d3h|sn:1%/3d3h|think|ctx:0%|se:0.0hr|🔧48|🤖1
 
 ## 설치 방법
 
+**먼저 이 `hud-installer` 폴더 안으로 이동(`cd`)한 뒤** 실행하세요. (상위 폴더에서 실행하면 스크립트를 못 찾습니다.)
+
 | OS | 명령어 |
 |----|--------|
+| Windows (CMD/더블클릭) | `apply-hud-windows.cmd` — **어느 폴더에서 실행해도 동작**(자기 위치 기준). 탐색기에서 더블클릭도 가능 |
+| Windows (PowerShell) | `powershell -ExecutionPolicy Bypass -File .\apply-hud-windows.ps1` |
 | Linux | `bash apply-hud-linux.sh` |
 | macOS | `bash apply-hud-macos.sh` |
-| Windows | `powershell -ExecutionPolicy Bypass -File .\apply-hud-windows.ps1` |
 
 또는 어느 OS에서든 직접 실행: `node apply-hud.mjs`
+
+> **PowerShell에서 "기존 '.ps1' 파일의 경로를 제공하십시오" 오류가 나면** 현재 위치가 `hud-installer` 폴더가 아니어서입니다. 폴더 안으로 `cd` 하거나 전체 경로를 주세요. 예:
+> `powershell -ExecutionPolicy Bypass -File "C:\Users\kaydash\dummy\hud-installer\apply-hud-windows.ps1"`
+> 경로 걱정 없이 쓰려면 `apply-hud-windows.cmd`(CMD 런처)를 사용하세요.
 
 설치 후 **Claude Code를 재시작**하세요.
 
