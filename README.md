@@ -3,10 +3,10 @@
 Claude Code + oh-my-claudecode(OMC)용 컴팩트·컬러 상태표시줄(statusline)을 설치합니다.
 
 ```
-Op4.8/max|5h:2%/3h58m|wk:23%/3d3h|sn:1%/3d3h|think|ctx:0%|se:0.0hr|🔧48|🤖1|C:/경로|계정|OMC#4.14.6
+Op4.8/high|5h:2%/3h58m|wk:23%/3d3h|sn:1%/3d3h|think|ctx:0%|se:0.0hr|🔧48|🤖1|C:/경로|계정|OMC#4.14.6
 ```
 
-- 공백 없는 `|` 구분자, 대괄호 없음, 컴팩트 모델 표기 + `/max` 등급
+- 공백 없는 `|` 구분자, 대괄호 없음, 컴팩트 모델 표기 + 현재 effort 수준(`/high`, `/xhigh` 등)
 - OMC 버전 라벨(`OMC#x.y.z`)은 맨 끝에 표시
 - 사용량 창은 `퍼센트/리셋시간`, 임계값 색상(녹색 <70, 노랑 <85, 빨강 ≥85)
 - 리셋 시간은 시안, 컨텍스트는 임계값 색상, `se:`는 세션 경과(시간 단위)
@@ -57,4 +57,4 @@ Op4.8/max|5h:2%/3h58m|wk:23%/3d3h|sn:1%/3d3h|think|ctx:0%|se:0.0hr|🔧48|🤖1|
 
 - 색상/레이아웃: `hud/omc-hud-custom.mjs` 수정 (상단의 색상 헬퍼)
 - HUD 요소/프리셋: `.omc/hud-config.json` 수정 (매 렌더마다 즉시 반영)
-- `/max` 등급은 포맷터의 `PLAN_TIER` 상수 — 다른 플랜이면 이 값만 변경
+- 모델 옆 effort 수준은 statusline stdin의 `effort.level`을 매 렌더마다 읽어 표시 (`/effort`로 바꾸면 자동 반영)

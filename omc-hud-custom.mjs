@@ -5,7 +5,7 @@
  * Runs the canonical OMC HUD (omc-hud.mjs), then reformats its rendered line
  * into a compact pipe-delimited layout requested by the user:
  *
- *   OMC#X.Y.Z|Op4.8(max)|5h:6%/3h56m|wk:..|sn:..|think|ctx:21%|se:4.7hr|🔧N|<cwd>
+ *   Op4.8/high|5h:6%/3h56m|wk:..|sn:..|think|ctx:21%|se:4.7hr|🔧N|<cwd>|<account>|OMC#X.Y.Z
  *
  * Why a wrapper: OMC's render.js hardcodes " | " separators, the "[...]" label
  * brackets, the "Model: " prefix, the "percent(time)" rate layout and the
@@ -23,7 +23,6 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const HUD = join(__dirname, "omc-hud.mjs");
-const PLAN_TIER = "max"; // Claude Max x20 subscription
 
 // Currently logged-in Claude account: the part of the email before "@".
 // Read from ~/.claude.json (oauthAccount.emailAddress) via a light regex so we
@@ -46,6 +45,15 @@ try {
   /* no stdin */
 }
 
+// Current reasoning effort level (low/medium/high/xhigh) from the statusline
+// payload (effort.level) — shown next to the model. Empty if absent.
+let effort = "";
+try {
+  effort = String(JSON.parse(input)?.effort?.level || "");
+} catch {
+  /* no/invalid stdin JSON */
+}
+
 const res = spawnSync(process.execPath, [HUD], { input, encoding: "utf8" });
 const raw = (res.stdout || "").replace(/\r/g, "");
 if (!raw.trim()) {
@@ -58,7 +66,7 @@ const stripAnsi = (s) => s.replace(/\x1b\[[0-9;]*m/g, "");
 
 // Color helpers — we strip OMC's ANSI to parse, then re-apply our own so the
 // statusline is highlighted. Threshold scale (usage/context %): green<70,
-// yellow<85, red>=85. Pipes and path are dimmed; model name cyan, tier yellow.
+// yellow<85, red>=85. Pipes and path are dimmed; model name cyan, effort yellow.
 const A = (c, s) => `\x1b[${c}m${s}\x1b[0m`;
 const SEP = "\x1b[2m|\x1b[0m";
 const pc = (n) => (n >= 85 ? "31" : n >= 70 ? "33" : "32");
@@ -115,7 +123,7 @@ try {
       f.label = m ? `OMC#${m[1]}` : s; // drop brackets + trailing "L"
     } else if (/^Model:/.test(s) || /^(Opus|Sonnet|Haiku)\b/.test(s)) {
       const m = s.match(/(?:Model:\s*)?([A-Za-z]+)\s*([0-9][0-9.]*)/);
-      f.model = m ? `${m[1].slice(0, 2)}${m[2]}/${PLAN_TIER}` : s; // Opus 4.8 -> Op4.8/max
+      f.model = m ? `${m[1].slice(0, 2)}${m[2]}${effort ? "/" + effort : ""}` : s; // Opus 4.8 -> Op4.8/high
     } else if (/^5h:/.test(s)) {
       f.r5 = slash(s);
     } else if (/^wk:/.test(s)) {
