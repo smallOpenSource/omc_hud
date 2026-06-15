@@ -65,3 +65,51 @@ Op4.8/high|5h:2%/3h58m|wk:23%/3d3h|sn:1%/3d3h|think|ctx:0%|se:0.0hr|🔧48|🤖1
 - 색상/레이아웃: `hud/omc-hud-custom.mjs` 수정 (상단의 색상 헬퍼)
 - HUD 요소/프리셋: `.omc/hud-config.json` 수정 (매 렌더마다 즉시 반영)
 - 모델 옆 effort 수준은 statusline stdin의 `effort.level`을 매 렌더마다 읽어 표시 (`/effort`로 바꾸면 자동 반영)
+
+## 설치 명령 간략하게
+```bash
+
+# mac
+mkdir -p ~/dummy
+cd ~/dummy
+wget https://raw.githubusercontent.com/smallOpenSource/omc_hud/refs/heads/main/apply-hud-macos.sh
+wget https://raw.githubusercontent.com/smallOpenSource/omc_hud/refs/heads/main/apply-hud.mjs
+wget https://raw.githubusercontent.com/smallOpenSource/omc_hud/refs/heads/main/hud-config.json
+wget https://raw.githubusercontent.com/smallOpenSource/omc_hud/refs/heads/main/omc-hud-custom.mjs
+
+chmod +x apply-hud-macos.sh
+./apply-hud-macos.sh
+
+
+rm -rf apply-hud-macos.sh
+rm -rf apply-hud.mjs
+rm -rf hud-config.json
+rm -rf omc-hud-custom.mjs
+
+
+# linux
+mkdir -p ~/dummy
+cd ~/dummy
+wget https://raw.githubusercontent.com/smallOpenSource/omc_hud/refs/heads/main/apply-hud-linux.sh
+wget https://raw.githubusercontent.com/smallOpenSource/omc_hud/refs/heads/main/apply-hud.mjs
+wget https://raw.githubusercontent.com/smallOpenSource/omc_hud/refs/heads/main/hud-config.json
+wget https://raw.githubusercontent.com/smallOpenSource/omc_hud/refs/heads/main/omc-hud-custom.mjs
+
+chmod +x apply-hud-linux.sh
+./apply-hud-linux.sh
+
+
+rm -rf apply-hud-linux.sh
+rm -rf apply-hud.mjs
+rm -rf hud-config.json
+rm -rf omc-hud-custom.mjs
+
+
+
+
+
+
+
+
+# windows: wget이 없는 경우가 있어서 이 프로젝트 통째로 받아서 실행파일로 적용
+```
