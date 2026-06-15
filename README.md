@@ -3,7 +3,7 @@
 Claude Code + oh-my-claudecode(OMC)용 컴팩트·컬러 상태표시줄(statusline)을 설치합니다.
 
 ```
-Op4.8/high|5h:2%/3h58m|wk:23%/3d3h|sn:1%/3d3h|think|ctx:0%|se:0.0hr|🔧48|🤖1|C:/경로|계정|OMC#4.14.6
+Op4.8/high|5h:2%/3h58m|wk:23%/3d3h|sn:1%/3d3h|think|ctx:0%|se:0.0hr|🔧48|🤖1|경로|계정|OMC#4.14.6
 ```
 
 - 공백 없는 `|` 구분자, 대괄호 없음, 컴팩트 모델 표기 + 현재 effort 수준(`/high`, `/xhigh` 등)
