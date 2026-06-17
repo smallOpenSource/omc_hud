@@ -144,6 +144,21 @@ try {
     }
   }
 
+  // pathLine = the cwd group OMC renders above the OMC# line. Depending on OMC
+  // version/config it can also carry git decorations (repo:/branch:/!N) and even
+  // the model token. Keep ONLY the real filesystem path; recover the model from
+  // here if the main line didn't carry it (older layouts put it in this group).
+  let cwd = "";
+  if (pathLine) {
+    const parts = pathLine.split(/\s*\|\s*/).map((s) => s.trim()).filter(Boolean);
+    cwd = parts.find((s) => /^(~|\/|[A-Za-z]:[\\/])/.test(s)) || parts[0] || "";
+    if (!f.model) {
+      const mp = parts.find((s) => /^(?:Model:\s*)?(Opus|Sonnet|Haiku)\b/.test(s));
+      const m = mp && mp.match(/(Opus|Sonnet|Haiku)\s*([0-9][0-9.]*)/);
+      if (m) f.model = `${m[1].slice(0, 2)}${m[2]}${effort ? "/" + effort : ""}`;
+    }
+  }
+
   const colored = [];
   if (f.model) colored.push(colorModel(f.model));
   if (f.r5) colored.push(colorRate(f.r5));
@@ -155,7 +170,7 @@ try {
   if (f.counts) colored.push(f.counts.trim().replace(/\s+/g, SEP));
   // 화이트리스트 고정: profile/스킬/브랜치 등 동적 배지(extra)는 출력하지 않는다.
   // (ralph/autopilot/todo/background 배지도 함께 표시되지 않음 — 의도된 동작)
-  if (pathLine) colored.push(A("36", pathLine));
+  if (cwd) colored.push(A("36", cwd)); // sanitized path only (git/model stripped)
   const acct = loginAccount();
   if (acct) colored.push(A("92", acct));
   if (f.label) colored.push(A("1", f.label)); // OMC label moved to the very end
