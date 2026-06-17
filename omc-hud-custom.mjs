@@ -115,7 +115,7 @@ try {
 
   const f = { label: "", model: "", r5: "", rwk: "", rsn: "", think: "", ctx: "", se: "", counts: "" };
   const extra = [];
-  const slash = (s) => s.replace(/%\(([^)]+)\)/, "%/$1"); // 6%(3h56m) -> 6%/3h56m
+  const slash = (s) => s.replace(/%\*?\s*\(~?([^)]+)\)/, "%/$1"); // 9%*(~4h3m)/6%(3h56m) -> 9%/4h3m
 
   for (const s of segs) {
     if (/^\[?OMC#/.test(s)) {
@@ -153,7 +153,8 @@ try {
   if (f.ctx) colored.push(colorCtx(f.ctx));
   if (f.se) colored.push(colorSe(f.se));
   if (f.counts) colored.push(f.counts.trim().replace(/\s+/g, SEP));
-  for (const e of extra) colored.push(A("2", e));
+  // 화이트리스트 고정: profile/스킬/브랜치 등 동적 배지(extra)는 출력하지 않는다.
+  // (ralph/autopilot/todo/background 배지도 함께 표시되지 않음 — 의도된 동작)
   if (pathLine) colored.push(A("36", pathLine));
   const acct = loginAccount();
   if (acct) colored.push(A("92", acct));
