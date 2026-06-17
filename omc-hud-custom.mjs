@@ -75,7 +75,7 @@ const colorRate = (seg) => {
   return m ? `${m[1]}:${A(pc(+m[2]), m[2] + "%")}\x1b[2m/\x1b[0m${A("36", m[3])}` : seg;
 };
 const colorCtx = (seg) => {
-  const m = seg.match(/^ctx:(\d+)%$/);
+  const m = seg.match(/^ctx:(\d+)%/); // tolerate a trailing " CRITICAL"/suffix
   return m ? `ctx:${A(pc(+m[1]), m[1] + "%")}` : seg;
 };
 const colorModel = (seg) => {
@@ -94,7 +94,7 @@ try {
 
   const main = lines[mainIdx];
   const pathLine = lines.slice(0, mainIdx).join(" ").trim(); // cwd (+git) group above
-  const below = lines.slice(mainIdx + 1); // multiline agent tree, kept as-is
+  let below = lines.slice(mainIdx + 1); // multiline detail group (agent tree, warnings)
 
   // Collapse " | " -> "|", then split into segments.
   const rawSegs = main
@@ -151,13 +151,29 @@ try {
   let cwd = "";
   if (pathLine) {
     const parts = pathLine.split(/\s*\|\s*/).map((s) => s.trim()).filter(Boolean);
-    cwd = parts.find((s) => /^(~|\/|[A-Za-z]:[\\/])/.test(s)) || parts[0] || "";
+    // Keep ONLY the real filesystem path. A "label:value" token (profile:, repo:,
+    // branch:, [API ...]) is a badge, not a path — exclude it. A drive letter
+    // (C:\) is a path: "label:" is a badge only when NOT followed by a slash.
+    // No fallback to parts[0]: if no path token exists, show nothing (never a badge).
+    const isBadge = (s) => /^[A-Za-z][\w.-]*:(?![\\/])/.test(s) || /^\[/.test(s);
+    cwd = parts.find((s) => /[\/~\\]/.test(s) && !isBadge(s)) || "";
     if (!f.model) {
       const mp = parts.find((s) => /^(?:Model:\s*)?(Opus|Sonnet|Haiku)\b/.test(s));
       const m = mp && mp.match(/(Opus|Sonnet|Haiku)\s*([0-9][0-9.]*)/);
       if (m) f.model = `${m[1].slice(0, 2)}${m[2]}${effort ? "/" + effort : ""}`;
     }
   }
+
+  // At critical context OMC drops ctx from the main line and emits it as a detail
+  // line below (e.g. "  ctx:94% CRITICAL"). Fold it back inline and remove the
+  // standalone line so the layout stays single-line. Red color conveys severity.
+  const isCtxLine = (l) => /(?:^|\s)ctx:\d+%/.test(l);
+  if (!f.ctx) {
+    const cl = below.find(isCtxLine);
+    const m = cl && cl.match(/ctx:(\d+)%/);
+    if (m) f.ctx = `ctx:${m[1]}%`;
+  }
+  below = below.filter((l) => !isCtxLine(l));
 
   const colored = [];
   if (f.model) colored.push(colorModel(f.model));
