@@ -265,9 +265,12 @@ const colorSe = (seg) => {
 // Per-model usage badge ("fable:0%") rides along in the rate group and has no
 // dedicated field. Shorten the model name to two letters so it matches the
 // model token's own convention (Opus 4.8 -> Op4.8): fable:0% -> Fa:0%.
+// OMC appends a stale marker and/or a reset time to scoped weekly buckets
+// (renderRateLimits in dist/hud/elements/limits.js), so the pattern must not
+// anchor at "%": keep that tail intact -> fable:0%(3d3h) -> Fa:0%(3d3h).
 const shortModelPct = (seg) => {
-  const m = seg.match(/^([A-Za-z][A-Za-z0-9.-]*):(\d+)%$/);
-  return m ? `${m[1][0].toUpperCase()}${m[1].slice(1, 2).toLowerCase()}:${m[2]}%` : seg;
+  const m = seg.match(/^([A-Za-z][A-Za-z0-9.-]*):(\d+%\*?(?:\([^)]*\))?)$/);
+  return m ? `${m[1][0].toUpperCase()}${m[1].slice(1, 2).toLowerCase()}:${m[2]}` : seg;
 };
 
 try {
